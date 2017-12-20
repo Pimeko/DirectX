@@ -28,6 +28,12 @@ bool				CompileShader(LPCWSTR pFileName, bool bPixel, LPCSTR pEntrypoint, ID3DBl
 
 bool LoadRAW(const std::string& map, float** m_height, unsigned short *m_sizeX, unsigned short *m_sizeY, const float *m_maxZ);
 
+void GenerateUV(int x, int y, int width, int height, int* u, int* v)
+{
+	*u = float(x) / float(width);
+	*v = 1.0f - (float(y) / float(height));
+}
+
 /*
 Exemple of possible triangle coodinates in 3D
 P0 
@@ -111,28 +117,16 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		DirectX::SimpleMath::Matrix World;
 	};
 
-	float* m_height;
-	unsigned short m_sizeX, m_sizeY;
-	float m_maxZ = 50;
-	auto loadedRaw = LoadRAW("terrainheight.raw", &m_height, &m_sizeX, &m_sizeY, &m_maxZ);
-	
-	auto width = m_sizeX;
-	auto height = m_sizeY;
-	auto size = width * height;
-	
-	VERTEX* vertices = new VERTEX[size];
-
-	for (auto i = 0; i < size; i++)
+	VERTEX vertices[] =
 	{
-		float x = i / width;
-		float y = i % width;
-		float u = float(x) / float(width);
-		float v = 1.0f - (float(y) / float(height));
-
-		vertices[i] = { x, y, m_height[i], u, v };
-	}
+		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f },
+		{ 1.0f, 0.0f, 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f, 1.0f, 1.0f },
+		{ 1.0f, 0.0f, 1.0f, 0.0f, 1.0f }
+	};
 
 	// INDEXES
+	auto width = 2, height = 2, size = 4;
 	int nbSquares = (width - 1) * (height - 1);
 	int sizeIndexes = nbSquares * (3 * 2);
 	
@@ -216,7 +210,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #pragma region
 	ID3D11Resource* texture;
 	ID3D11ShaderResourceView* textureView;
-	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"terraintexture.dds", &texture, &textureView, 0, NULL);
+	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/fire01.dds", &texture, &textureView, 0, NULL);
 	if (FAILED(hr)) {
 		return hr;
 	}
@@ -240,17 +234,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		return hr;
 	}
 
-	ID3D11Resource* textureDetail;
-	ID3D11ShaderResourceView* textureViewDetail;
-	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"detail.dds", &textureDetail, &textureViewDetail, 0, NULL);
-
-	if (FAILED(hr)) {
-		return hr;
-	}
-
-	g_pImmediateContext->PSSetShaderResources(1, 1, &textureViewDetail);
-
 #pragma endregion Texture
+
 
 	g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer11);
 
@@ -274,8 +259,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pInputManager->Manage();
 
 			ImGui_ImplDX11_NewFrame();
-			ImGui::Begin("Menu Debug");
-			ImGui::Text("Hello World Imgui");
+			ImGui::Begin("Fire");
+			ImGui::Text("Fire");
 			ImGui::End();
 
 			oFreeCamera.Update(g_pInputManager, fElaspedTime);
