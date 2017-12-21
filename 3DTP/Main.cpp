@@ -28,19 +28,13 @@ bool				CompileShader(LPCWSTR pFileName, bool bPixel, LPCSTR pEntrypoint, ID3DBl
 
 bool LoadRAW(const std::string& map, float** m_height, unsigned short *m_sizeX, unsigned short *m_sizeY, const float *m_maxZ);
 
-void GenerateUV(int x, int y, int width, int height, int* u, int* v)
-{
-	*u = float(x) / float(width);
-	*v = 1.0f - (float(y) / float(height));
-}
-
 /*
 Exemple of possible triangle coodinates in 3D
-P0 
+P0
 0.0f, 1.0f, 0.0f,
-P1 
+P1
 5.0f, 1.0f, 0.0f,
-P2 
+P2
 5.0f, 1.0f, 5.0f,
 */
 using namespace DirectX::SimpleMath;
@@ -52,7 +46,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	ulong	iLastTime = 0;
 
 	hInst = hInstance;
-	if (!CreateWindows (hInstance, nCmdShow, hWnd))
+	if (!CreateWindows(hInstance, nCmdShow, hWnd))
 	{
 		MessageBox(NULL, L"Erreur lors de la création de la fenêtre", L"Error", 0);
 		return false;
@@ -105,7 +99,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	CompileShader(L"TextureShader.fx", true, "DiffusePS", &ps);
 	g_pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), NULL, &pPS);
 	g_pImmediateContext->PSSetShader(pPS, 0, 0);
-	
+
 	struct VERTEX
 	{
 		FLOAT x, y, z;
@@ -117,20 +111,27 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		DirectX::SimpleMath::Matrix World;
 	};
 
-	VERTEX vertices[] =
+	auto width = 10;
+	auto height = 10;
+	auto size = width * height;
+
+	VERTEX* vertices = new VERTEX[size];
+
+	for (auto i = 0; i < size; i++)
 	{
-		{ 0.0f, 0.0f, 0.0f, 0.0f, 0.0f },
-		{ 1.0f, 0.0f, 0.0f, 1.0f, 0.0f },
-		{ 0.0f, 0.0f, 1.0f, 1.0f, 1.0f },
-		{ 1.0f, 0.0f, 1.0f, 0.0f, 1.0f }
-	};
+		float x = i / width;
+		float y = i % width;
+		float u = float(x) / float(width);
+		float v = 1.0f - (float(y) / float(height));
+
+		vertices[i] = { x, 0, y, u, v };
+	}
 
 	// INDEXES
-	auto width = 2, height = 2, size = 4;
 	int nbSquares = (width - 1) * (height - 1);
 	int sizeIndexes = nbSquares * (3 * 2);
-	
-	unsigned int* indexes  = new unsigned int[sizeIndexes];
+
+	unsigned int* indexes = new unsigned int[sizeIndexes];
 
 	int j = 0;
 	for (auto i = 0; i < nbSquares; i++)
@@ -144,7 +145,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		indexes[j++] = left + width;
 		indexes[j++] = left + width + 1;
 	}
-	
+
 	ID3D11Buffer *pIndexBuffer;
 
 	D3D11_BUFFER_DESC bd_index;
@@ -154,7 +155,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	bd_index.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	bd_index.CPUAccessFlags = 0;
 	bd_index.MiscFlags = 0;
-	
+
 	D3D11_SUBRESOURCE_DATA initData;
 	initData.pSysMem = indexes;
 	initData.SysMemPitch = 0;
@@ -181,7 +182,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	memcpy(ms.pData, vertices, sizeof(VERTEX) * size);                // copy the data
 	g_pImmediateContext->Unmap(pVBuffer, NULL);                                     // unmap the buffer
 
-	// input layout
+																					// input layout
 	ID3D11InputLayout *pLayout;    // global
 	D3D11_INPUT_ELEMENT_DESC ied[] =
 	{
@@ -210,7 +211,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #pragma region
 	ID3D11Resource* texture;
 	ID3D11ShaderResourceView* textureView;
-	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/fire01.dds", &texture, &textureView, 0, NULL);
+	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"fire.dds", &texture, &textureView, 0, NULL);
 	if (FAILED(hr)) {
 		return hr;
 	}
@@ -233,21 +234,31 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	if (FAILED(hr)) {
 		return hr;
 	}
+	
+	ID3D11Resource* textureDetail;
+	ID3D11ShaderResourceView* textureViewDetail;
+	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"detail.dds", &textureDetail, &textureViewDetail, 0, NULL);
+
+	if (FAILED(hr)) {
+		return hr;
+	}
+	
+	g_pImmediateContext->PSSetShaderResources(1, 1, &textureViewDetail);
+	
 
 #pragma endregion Texture
-
 
 	g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer11);
 
 	IAEngine::FreeCamera oFreeCamera;
 	iLastTime = timeGetTime();
-	PeekMessage( &oMsg, NULL, 0, 0, PM_NOREMOVE );
-	while ( oMsg.message != WM_QUIT )
+	PeekMessage(&oMsg, NULL, 0, 0, PM_NOREMOVE);
+	while (oMsg.message != WM_QUIT)
 	{
-		if (PeekMessage( &oMsg, NULL, 0, 0, PM_REMOVE )) 
+		if (PeekMessage(&oMsg, NULL, 0, 0, PM_REMOVE))
 		{
-			TranslateMessage( &oMsg );
-			DispatchMessage( &oMsg );
+			TranslateMessage(&oMsg);
+			DispatchMessage(&oMsg);
 		}
 		else
 		{
@@ -259,14 +270,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pInputManager->Manage();
 
 			ImGui_ImplDX11_NewFrame();
-			ImGui::Begin("Fire");
-			ImGui::Text("Fire");
+			ImGui::Begin("Menu Debug");
+			ImGui::Text("Hello World Imgui");
 			ImGui::End();
 
 			oFreeCamera.Update(g_pInputManager, fElaspedTime);
 			const Matrix& oViewMatrix = oFreeCamera.GetViewMatrix();
 			Matrix oProjMatrix = Matrix::CreatePerspectiveFieldOfView(M_PI / 4.0f, (float)WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.01f, 1000.0f);
-			
+
 			// Do a lot of thing like draw triangles with DirectX
 			Matrix world = Matrix();
 			CONSTANT_BUFFER constant_buffer;
@@ -276,7 +287,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
 			g_pImmediateContext->RSSetViewports(1, &vp);
 
-			FLOAT rgba[] = { 1.0f, 1.0f, 1.0f, 0.0f };
+			FLOAT rgba[] = { 0.0f, 1.0f, 0.0f, 0.0f };
 			g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, rgba);
 			g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0, 0);
 
@@ -303,7 +314,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	pVS->Release();
 	pPS->Release();
 	delete g_pInputManager;
-	return (int) oMsg.wParam;
+	return (int)oMsg.wParam;
 }
 
 bool CreateDevice()

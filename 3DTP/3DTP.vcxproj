@@ -95,7 +95,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="3DTP.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DirectXTK\DDSTextureLoader.cpp" />
     <ClCompile Include="DirectXTK\SimpleMath.cpp" />
