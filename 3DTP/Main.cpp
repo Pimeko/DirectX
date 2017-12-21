@@ -28,15 +28,6 @@ bool				CompileShader(LPCWSTR pFileName, bool bPixel, LPCSTR pEntrypoint, ID3DBl
 
 bool LoadRAW(const std::string& map, float** m_height, unsigned short *m_sizeX, unsigned short *m_sizeY, const float *m_maxZ);
 
-/*
-Exemple of possible triangle coodinates in 3D
-P0
-0.0f, 1.0f, 0.0f,
-P1
-5.0f, 1.0f, 0.0f,
-P2
-5.0f, 1.0f, 5.0f,
-*/
 using namespace DirectX::SimpleMath;
 
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -87,18 +78,19 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	vp.TopLeftX = 0;
 	vp.TopLeftY = 0;
 
-	//Create and fill other DirectX Stuffs like Vertex/Index buffer, shaders 
 	ID3DBlob* vs;
 	ID3D11VertexShader *pVS;
-	CompileShader(L"TextureShader.fx", false, "DiffuseVS", &vs);
+	CompileShader(L"FireShader.fx", false, "DiffuseVS", &vs);
 	g_pDevice->CreateVertexShader(vs->GetBufferPointer(), vs->GetBufferSize(), NULL, &pVS);
 	g_pImmediateContext->VSSetShader(pVS, 0, 0);
 
 	ID3DBlob* ps;
 	ID3D11PixelShader *pPS;
-	CompileShader(L"TextureShader.fx", true, "DiffusePS", &ps);
+	CompileShader(L"FireShader.fx", true, "DiffusePS", &ps);
 	g_pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), NULL, &pPS);
 	g_pImmediateContext->PSSetShader(pPS, 0, 0);
+
+	// TODO : Setup and create the new noise buffer.
 
 	struct VERTEX
 	{
