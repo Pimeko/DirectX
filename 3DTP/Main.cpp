@@ -3,6 +3,8 @@
 #include "InputManager.h"
 #include "D3Dcompiler.h"
 #include "Camera.h"
+#include "Model.h"
+#include "FireShaderClass.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
@@ -61,15 +63,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	}
 
 
-	ID3D11RasterizerState* pRasterizerState;
-	D3D11_RASTERIZER_DESC oDesc;
-	ZeroMemory(&oDesc, sizeof(D3D11_RASTERIZER_DESC));
-	oDesc.FillMode = D3D11_FILL_SOLID;
-	//oDesc.FillMode = D3D11_FILL_WIREFRAME;
-	oDesc.CullMode = D3D11_CULL_NONE;
-	g_pDevice->CreateRasterizerState(&oDesc, &pRasterizerState);
-	g_pImmediateContext->RSSetState(pRasterizerState);
-
 	D3D11_VIEWPORT vp;
 	vp.Width = WINDOW_WIDTH;
 	vp.Height = WINDOW_HEIGHT;
@@ -78,31 +71,80 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	vp.TopLeftX = 0;
 	vp.TopLeftY = 0;
 
-	ID3DBlob* vs;
-	ID3D11VertexShader *pVS;
-	CompileShader(L"FireShader.fx", false, "DiffuseVS", &vs);
-	g_pDevice->CreateVertexShader(vs->GetBufferPointer(), vs->GetBufferSize(), NULL, &pVS);
-	g_pImmediateContext->VSSetShader(pVS, 0, 0);
-
-	ID3DBlob* ps;
-	ID3D11PixelShader *pPS;
-	CompileShader(L"FireShader.fx", true, "DiffusePS", &ps);
-	g_pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), NULL, &pPS);
-	g_pImmediateContext->PSSetShader(pPS, 0, 0);
-
-	// TODO : Setup and create the new noise buffer.
-
-	struct VERTEX
+	/*struct VERTEX
 	{
 		FLOAT x, y, z;
 		FLOAT u, v;
 	};
 
-	struct CONSTANT_BUFFER
+	struct MATRIX_BUFFER
 	{
 		DirectX::SimpleMath::Matrix World;
 	};
 
+	struct NOISE_BUFFER
+	{
+		FLOAT frameTime;
+		Vector3 scrollSpeeds;
+		Vector3 scales;
+		FLOAT padding;
+	};
+
+	struct DISTORTION_BUFFER
+	{
+		Vector3 distortion1, distortion2, distortion3;
+		FLOAT distortionScale, distortionBias;
+	};
+
+
+	ID3D11RasterizerState* pRasterizerState;
+	D3D11_RASTERIZER_DESC oDesc;
+	ZeroMemory(&oDesc, sizeof(D3D11_RASTERIZER_DESC));
+	oDesc.FillMode = D3D11_FILL_SOLID;
+	//oDesc.FillMode = D3D11_FILL_WIREFRAME;
+	oDesc.CullMode = D3D11_CULL_NONE;
+	g_pDevice->CreateRasterizerState(&oDesc, &pRasterizerState);
+	g_pImmediateContext->RSSetState(pRasterizerState);
+	*/
+
+	/*ID3DBlob* vs;
+	ID3D11VertexShader *pVS;
+	CompileShader(L"FireShader.fx", false, "DiffuseVS", &vs);
+	g_pDevice->CreateVertexShader(vs->GetBufferPointer(), vs->GetBufferSize(), NULL, &pVS);
+	//g_pImmediateContext->VSSetShader(pVS, 0, 0); METTRE PLUS TARD
+
+	ID3DBlob* ps;
+	ID3D11PixelShader *pPS;
+	CompileShader(L"FireShader.fx", true, "DiffusePS", &ps);
+	g_pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), NULL, &pPS);
+	//g_pImmediateContext->PSSetShader(pPS, 0, 0); METTRE PLUS TARD
+
+	ID3D11InputLayout *pLayout;
+	D3D11_INPUT_ELEMENT_DESC ied[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+
+	g_pDevice->CreateInputLayout(ied, 2, vs->GetBufferPointer(), vs->GetBufferSize(), &pLayout);
+	g_pImmediateContext->IASetInputLayout(pLayout);
+
+	// Matrix Buffer
+	ID3D11Buffer *m_matrixBuffer;
+
+	D3D11_BUFFER_DESC matrixBufferDesc;
+	ZeroMemory(&matrixBufferDesc, sizeof(matrixBufferDesc));
+
+	matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	matrixBufferDesc.ByteWidth = sizeof(MATRIX_BUFFER);
+	matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	HRESULT hr = g_pDevice->CreateBuffer(&matrixBufferDesc, NULL, &m_matrixBuffer);
+	if (FAILED(hr))
+		return hr;*/
+
+	/*
 	auto width = 10;
 	auto height = 10;
 	auto size = width * height;
@@ -137,7 +179,82 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		indexes[j++] = left + width;
 		indexes[j++] = left + width + 1;
 	}
+	*/
 
+	// Noise Buffer
+	/*ID3D11Buffer *m_noiseBuffer;
+	D3D11_BUFFER_DESC noiseBuffer;
+	ZeroMemory(&noiseBuffer, sizeof(noiseBuffer));
+
+	noiseBuffer.Usage = D3D11_USAGE_DYNAMIC;
+	noiseBuffer.ByteWidth = sizeof(NOISE_BUFFER);
+	noiseBuffer.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	noiseBuffer.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	hr = g_pDevice->CreateBuffer(&noiseBuffer, NULL, &m_noiseBuffer);
+	if (FAILED(hr))
+		return hr;
+
+	// Sampler Desc Noise
+	D3D11_SAMPLER_DESC samplerDescNoise;
+	samplerDescNoise.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	samplerDescNoise.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDescNoise.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDescNoise.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDescNoise.MipLODBias = 0.0f;
+	samplerDescNoise.MaxAnisotropy = 1;
+	samplerDescNoise.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	samplerDescNoise.BorderColor[0] = 0;
+	samplerDescNoise.BorderColor[1] = 0;
+	samplerDescNoise.BorderColor[2] = 0;
+	samplerDescNoise.BorderColor[3] = 0;
+	samplerDescNoise.MinLOD = 0;
+	samplerDescNoise.MaxLOD = D3D11_FLOAT32_MAX;
+	ID3D11SamplerState* m_sampleState;
+
+	hr = g_pDevice->CreateSamplerState(&samplerDescNoise, &m_sampleState);
+	if (FAILED(hr))
+		return hr;
+
+	// Sampler Desc Clamp
+	D3D11_SAMPLER_DESC samplerDescClamp;
+	samplerDescClamp.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	samplerDescClamp.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDescClamp.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDescClamp.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDescClamp.MipLODBias = 0.0f;
+	samplerDescClamp.MaxAnisotropy = 1;
+	samplerDescClamp.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	samplerDescClamp.BorderColor[0] = 0;
+	samplerDescClamp.BorderColor[1] = 0;
+	samplerDescClamp.BorderColor[2] = 0;
+	samplerDescClamp.BorderColor[3] = 0;
+	samplerDescClamp.MinLOD = 0;
+	samplerDescClamp.MaxLOD = D3D11_FLOAT32_MAX;
+	ID3D11SamplerState* m_sampleStateClamp;
+
+	hr = g_pDevice->CreateSamplerState(&samplerDescClamp, &m_sampleStateClamp);
+
+	if (FAILED(hr))
+		return hr;
+
+	// Distortion Buffer
+	ID3D11Buffer *m_distortionBuffer;
+	D3D11_BUFFER_DESC distortionBufferDesc;
+	ZeroMemory(&distortionBufferDesc, sizeof(distortionBufferDesc));
+
+	distortionBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	distortionBufferDesc.ByteWidth = sizeof(NOISE_BUFFER);
+	distortionBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	distortionBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	hr = g_pDevice->CreateBuffer(&distortionBufferDesc, NULL, &m_distortionBuffer);
+
+	if (FAILED(hr))
+		return hr;*/
+
+	/*
+	// Index Buffer
 	ID3D11Buffer *pIndexBuffer;
 
 	D3D11_BUFFER_DESC bd_index;
@@ -156,49 +273,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	g_pDevice->CreateBuffer(&bd_index, &initData, &pIndexBuffer);
 	g_pImmediateContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
-	// vertex buffer
-	ID3D11Buffer *pVBuffer;    // global
-
-	D3D11_BUFFER_DESC bd;
-	ZeroMemory(&bd, sizeof(bd));
-
-	bd.Usage = D3D11_USAGE_DYNAMIC;                // write access access by CPU and GPU
-	bd.ByteWidth = sizeof(VERTEX) * size;             // size is the VERTEX struct * 3
-	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;       // use as a vertex buffer
-	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;    // allow CPU to write in buffer
-
-	g_pDevice->CreateBuffer(&bd, NULL, &pVBuffer);       // create the buffer
+	
 
 	D3D11_MAPPED_SUBRESOURCE ms;
 	g_pImmediateContext->Map(pVBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);   // map the buffer
 	memcpy(ms.pData, vertices, sizeof(VERTEX) * size);                // copy the data
 	g_pImmediateContext->Unmap(pVBuffer, NULL);                                     // unmap the buffer
 
-																					// input layout
-	ID3D11InputLayout *pLayout;    // global
-	D3D11_INPUT_ELEMENT_DESC ied[] =
-	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-
-	g_pDevice->CreateInputLayout(ied, 2, vs->GetBufferPointer(), vs->GetBufferSize(), &pLayout);
-	g_pImmediateContext->IASetInputLayout(pLayout);
-
-	ID3D11Buffer* g_pConstantBuffer11 = NULL;
-
-	D3D11_BUFFER_DESC cbDesc;
-	cbDesc.ByteWidth = sizeof(CONSTANT_BUFFER);
-	cbDesc.Usage = D3D11_USAGE_DEFAULT;
-	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbDesc.CPUAccessFlags = 0;
-	cbDesc.MiscFlags = 0;
-	cbDesc.StructureByteStride = 0;
-
-	HRESULT hr = g_pDevice->CreateBuffer(&cbDesc, NULL, &g_pConstantBuffer11);
-
-	if (FAILED(hr))
-		return hr;
+	
 
 #pragma region
 	ID3D11Resource* texture;
@@ -241,6 +323,37 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #pragma endregion Texture
 
 	g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer11);
+	*/
+
+	struct CONSTANT_BUFFER
+	{
+		Matrix world;
+	};
+
+	ID3D11Buffer* g_pConstantBuffer11 = NULL;
+
+	D3D11_BUFFER_DESC cbDesc;
+	cbDesc.ByteWidth = sizeof(CONSTANT_BUFFER);
+	cbDesc.Usage = D3D11_USAGE_DEFAULT;
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbDesc.CPUAccessFlags = 0;
+	cbDesc.MiscFlags = 0;
+	cbDesc.StructureByteStride = 0;
+
+	HRESULT hr = g_pDevice->CreateBuffer(&cbDesc, NULL, &g_pConstantBuffer11);
+	if (FAILED(hr))
+		MessageBox(NULL, L"a", L"Error", 0);
+
+	Model* m_Model = new Model;
+	if (!m_Model)
+		MessageBox(NULL, L"b", L"Error", 0);
+
+
+
+	m_Model->Initialize(g_pDevice, L"data/fire01.dds", L"data/noise01.dds", L"data/alpha01.dds");
+
+	FireShaderClass* m_FireShader = new FireShaderClass;
+	m_FireShader->Initialize(g_pDevice, hWnd);
 
 	IAEngine::FreeCamera oFreeCamera;
 	iLastTime = timeGetTime();
@@ -273,22 +386,64 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			// Do a lot of thing like draw triangles with DirectX
 			Matrix world = Matrix();
 			CONSTANT_BUFFER constant_buffer;
-			constant_buffer.World = (world * oViewMatrix * oProjMatrix).Transpose();
+			constant_buffer.world = (world * oViewMatrix * oProjMatrix).Transpose();
 			g_pImmediateContext->UpdateSubresource(g_pConstantBuffer11, 0, NULL, &constant_buffer, 0, 0);
+
+			// !
+			bool result;
+			Vector3 scrollSpeeds, scales;
+			Vector2 distortion1, distortion2, distortion3;
+			float distortionScale, distortionBias;
+			static float frameTime = 0.0f;
+
+			// Increment the frame time counter.
+			frameTime += 0.01f;
+			if (frameTime > 1000.0f)
+			{
+				frameTime = 0.0f;
+			}
+
+			// Set the three scrolling speeds for the three different noise textures.
+			scrollSpeeds = Vector3(1.3f, 2.1f, 2.3f);
+
+			// Set the three scales which will be used to create the three different noise octave textures.
+			scales = Vector3(1.0f, 2.0f, 3.0f);
+
+			// Set the three different x and y distortion factors for the three different noise textures.
+			distortion1 = Vector2(0.1f, 0.2f);
+			distortion2 = Vector2(0.1f, 0.3f);
+			distortion3 = Vector2(0.1f, 0.1f);
+
+			// The the scale and bias of the texture coordinate sampling perturbation.
+			distortionScale = 0.8f;
+			distortionBias = 0.5f;
+
+			// Put the square model vertex and index buffers on the graphics pipeline to prepare them for drawing.
+			m_Model->Render(g_pImmediateContext);
+
+			// Render the square model using the fire shader.
+			result = m_FireShader->Render(g_pImmediateContext, m_Model->GetIndexCount(), world, oViewMatrix, oProjMatrix,
+				m_Model->GetTexture1(), m_Model->GetTexture2(), m_Model->GetTexture3(), frameTime, scrollSpeeds,
+				scales, distortion1, distortion2, distortion3, distortionScale, distortionBias);
+			if (!result)
+				MessageBox(NULL, L"c", L"Error", 0);
+
+			// !
+
 
 			g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
 			g_pImmediateContext->RSSetViewports(1, &vp);
 
-			FLOAT rgba[] = { 0.0f, 1.0f, 0.0f, 0.0f };
+			FLOAT rgba[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 			g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, rgba);
 			g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0, 0);
 
-			UINT stride = sizeof(VERTEX);
+			//UINT stride = sizeof(VERTEX);
 			UINT offset = 0;
-			g_pImmediateContext->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
+			/*g_pImmediateContext->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
 			g_pImmediateContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 			g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			g_pImmediateContext->DrawIndexed(sizeIndexes, 0, 0);
+			g_pImmediateContext->DrawIndexed(sizeIndexes, 0, 0);*/
 
 			ImGui::Render();
 			g_pSwapChain->Present(0, 0);
@@ -299,12 +454,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	g_pRenderTargetView->Release();
 	g_pDepthStencilView->Release();
 	g_pDepthStencil->Release();
-	pRasterizerState->Release();
+	//pRasterizerState->Release();
 	g_pImmediateContext->Release();
 	g_pSwapChain->Release();
 	g_pDevice->Release();
-	pVS->Release();
-	pPS->Release();
+	//pVS->Release();
+	//pPS->Release();
 	delete g_pInputManager;
 	return (int)oMsg.wParam;
 }
