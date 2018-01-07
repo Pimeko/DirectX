@@ -26,6 +26,15 @@ cbuffer NoiseBuffer : register(b1)
     float padding;
 };
 
+cbuffer DistortionBuffer : register(b2)
+{
+    float2 distortion1;
+    float2 distortion2;
+    float2 distortion3;
+    float distortionScale;
+    float distortionBias;
+};
+
 // Vertex Shader (first to be called)
 VertexOutput DiffuseVS(VertexInput input)
 {
@@ -55,15 +64,6 @@ Texture2D alphaTexture : register(t2);
 SamplerState SampleType;
 SamplerState SampleType2;
 
-cbuffer DistortionBuffer : register(b2)
-{
-    float2 distortion1;
-    float2 distortion2;
-    float2 distortion3;
-    float distortionScale;
-    float distortionBias;
-};
-
 float4 DiffusePS(VertexOutput input) :SV_Target
 {
 	float4 noise1;
@@ -75,42 +75,29 @@ float4 DiffusePS(VertexOutput input) :SV_Target
     float4 fireColor;
     float4 alphaColor;
 	
-	// Sample the same noise texture using the three different texture coordinates to get three different noise scales.
     noise1 = noiseTexture.Sample(SampleType, input.texCoords1);
     noise2 = noiseTexture.Sample(SampleType, input.texCoords2);
     noise3 = noiseTexture.Sample(SampleType, input.texCoords3);
-
-    // Move the noise from the (0, 1) range to the (-1, +1) range.
+	
     noise1 = (noise1 - 0.5f) * 2.0f;
     noise2 = (noise2 - 0.5f) * 2.0f;
     noise3 = (noise3 - 0.5f) * 2.0f;
 	
-	
-	// Distort the three noise x and y coordinates by the three different distortion x and y values.
     noise1.xy = noise1.xy * distortion1.xy;
     noise2.xy = noise2.xy * distortion2.xy;
     noise3.xy = noise3.xy * distortion3.xy;
 
-    // Combine all three distorted noise results into a single noise result.
-    finalNoise = noise1 + noise2 + noise3;
+    finalNoise = (noise1 + noise2 + noise3) / 1.0f;
+	finalNoise.y = 0;
 	
-	// Perturb the input texture Y coordinates by the distortion scale and bias values.  
-    // The perturbation gets stronger as you move up the texture which creates the flame flickering at the top effect.
     perturb = ((1.0f - input.texCoord0.y) * distortionScale) + distortionBias;
 
-    // Now create the perturbed and distorted texture sampling coordinates that will be used to sample the fire color texture.
     noiseCoords.xy = (finalNoise.xy * perturb) + input.texCoord0.xy;
 	
-	// Sample the color from the fire texture using the perturbed and distorted texture sampling coordinates.
-    // Use the clamping sample state instead of the wrap sample state to prevent flames wrapping around.
     fireColor = fireTexture.Sample(SampleType2, noiseCoords.xy);
-
-    // Sample the alpha value from the alpha texture using the perturbed and distorted texture sampling coordinates.
-    // This will be used for transparency of the fire.
-    // Use the clamping sample state instead of the wrap sample state to prevent flames wrapping around.
+	
     alphaColor = alphaTexture.Sample(SampleType2, noiseCoords.xy);
 	
-	// Set the alpha blending of the fire to the perturbed and distored alpha texture value.
     fireColor.a = alphaColor;
 	
     return fireColor;
