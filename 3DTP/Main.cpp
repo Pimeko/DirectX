@@ -27,9 +27,8 @@ bool				CreateDevice();
 bool				CreateDefaultRT();
 bool				CompileShader(LPCWSTR pFileName, bool bPixel, LPCSTR pEntrypoint, ID3DBlob** ppCompiledShader);//utiliser un L devant une chaine de caractère pour avoir un wchar* comme L"MonEffet.fx"
 bool LoadFireShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buffer** g_pNoiseBuffer, ID3D11Buffer** g_pDistortionBuffer,
-	ID3D11ShaderResourceView** textureView, ID3D11ShaderResourceView** textureNoiseView, ID3D11ShaderResourceView** textureAlphaView);
+	ID3D11ShaderResourceView** textureView, ID3D11ShaderResourceView** textureNoiseView, ID3D11ShaderResourceView** textureAlphaView, ID3D11ShaderResourceView** textureGroundView);
 bool SetSamplerStates();
-void InstanciateFire();
 
 struct VIEW_BUFFER
 {
@@ -178,8 +177,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	g_pDevice->CreateInputLayout(ied, 2, vs->GetBufferPointer(), vs->GetBufferSize(), &pLayout);
 
 	ID3D11Buffer *g_pViewBuffer11 = NULL, *g_pNoiseBuffer = NULL, *g_pDistortionBuffer = NULL;
-	ID3D11ShaderResourceView *textureView = NULL, *textureNoiseView = NULL, *textureAlphaView = NULL;
-	LoadFireShaderBuffersAndTextures(&g_pViewBuffer11, &g_pNoiseBuffer, &g_pDistortionBuffer, &textureView, &textureNoiseView, &textureAlphaView);
+	ID3D11ShaderResourceView *textureView = NULL, *textureNoiseView = NULL, *textureAlphaView = NULL, *textureGroundView = NULL;
+	LoadFireShaderBuffersAndTextures(&g_pViewBuffer11, &g_pNoiseBuffer, &g_pDistortionBuffer, &textureView, &textureNoiseView, &textureAlphaView, &textureGroundView);
 	SetSamplerStates();
 
 	float frameTime = 0.0f;
@@ -267,6 +266,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->VSSetShader(pVS, 0, 0);
 			g_pImmediateContext->PSSetShader(pPS, 0, 0);
 
+
+			g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pViewBuffer11);
+			g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pNoiseBuffer);
+			g_pImmediateContext->PSSetConstantBuffers(2, 1, &g_pDistortionBuffer);
+			g_pImmediateContext->PSSetShaderResources(0, 1, &textureView);
+			g_pImmediateContext->PSSetShaderResources(1, 1, &textureNoiseView);
+			g_pImmediateContext->PSSetShaderResources(2, 1, &textureAlphaView);
+
 			for (auto i = nbFires - 1; i >= 0; i--) {
 				fires[i].Draw(g_pImmediateContext);
 			}
@@ -274,6 +281,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 			g_pImmediateContext->VSSetShader(pVSGround, 0, 0);
 			g_pImmediateContext->PSSetShader(pPSGround, 0, 0);
+			g_pImmediateContext->PSSetShaderResources(0, 1, &textureGroundView);
 
 			grass->Draw(g_pImmediateContext);
 
@@ -412,7 +420,7 @@ bool LoadRAW(const std::string& map, float** m_height, unsigned short *m_sizeX, 
 }
 
 bool LoadFireShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buffer** g_pNoiseBuffer, ID3D11Buffer** g_pDistortionBuffer,
-	ID3D11ShaderResourceView** textureView, ID3D11ShaderResourceView** textureNoiseView, ID3D11ShaderResourceView** textureAlphaView)
+	ID3D11ShaderResourceView** textureView, ID3D11ShaderResourceView** textureNoiseView, ID3D11ShaderResourceView** textureAlphaView, ID3D11ShaderResourceView** textureGroundView)
 {
 	// world buffer
 	D3D11_BUFFER_DESC cbDesc;
@@ -427,7 +435,6 @@ bool LoadFireShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buff
 
 	if (FAILED(hr))
 		return hr;
-	g_pImmediateContext->VSSetConstantBuffers(0, 1, g_pViewBuffer11);
 
 	// noise buffer
 	D3D11_BUFFER_DESC noiseBuffer;
@@ -442,7 +449,6 @@ bool LoadFireShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buff
 
 	if (FAILED(hr))
 		return hr;
-	g_pImmediateContext->VSSetConstantBuffers(1, 1, g_pNoiseBuffer);
 
 	// distortion buffer
 	D3D11_BUFFER_DESC distortionBuffer;
@@ -457,28 +463,30 @@ bool LoadFireShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buff
 
 	if (FAILED(hr))
 		return hr;
-	g_pImmediateContext->PSSetConstantBuffers(2, 1, g_pDistortionBuffer);
 
 	ID3D11Resource* texture;
 	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/fire01.dds", &texture, textureView, 0, NULL);
 	if (FAILED(hr)) {
 		return hr;
 	}
-	g_pImmediateContext->PSSetShaderResources(0, 1, textureView);
 
 	ID3D11Resource* textureNoise;
 	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/noise01.dds", &textureNoise, textureNoiseView, 0, NULL);
 	if (FAILED(hr)) {
 		return hr;
 	}
-	g_pImmediateContext->PSSetShaderResources(1, 1, textureNoiseView);
 
 	ID3D11Resource* textureAlpha;
 	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/alpha01.dds", &textureAlpha, textureAlphaView, 0, NULL);
 	if (FAILED(hr)) {
 		return hr;
 	}
-	g_pImmediateContext->PSSetShaderResources(2, 1, textureAlphaView);
+
+	ID3D11Resource* textureGround;
+	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/detail.dds", &textureGround, textureGroundView, 0, NULL);
+	if (FAILED(hr)) {
+		return hr;
+	}
 }
 
 bool SetSamplerStates()

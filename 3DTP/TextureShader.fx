@@ -36,5 +36,5 @@ VertexOutput DiffuseVS(VertexInput input)
 
 float4 DiffusePS(VertexOutput input) :SV_Target
 {
-	return diffuse = ObjTexture.Sample(ObjSamplerState, input.texCoord);
+	return ObjTexture.Sample(ObjSamplerState, input.texCoord);
 }
