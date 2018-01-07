@@ -3,6 +3,7 @@
 #include "InputManager.h"
 #include "D3Dcompiler.h"
 #include "Camera.h"
+#include "ModelFire.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
@@ -28,12 +29,7 @@ bool				CompileShader(LPCWSTR pFileName, bool bPixel, LPCSTR pEntrypoint, ID3DBl
 bool LoadShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buffer** g_pNoiseBuffer, ID3D11Buffer** g_pDistortionBuffer,
 	ID3D11ShaderResourceView** textureView, ID3D11ShaderResourceView** textureNoiseView, ID3D11ShaderResourceView** textureAlphaView);
 bool SetSamplerStates();
-
-struct VERTEX
-{
-	FLOAT x, y, z;
-	FLOAT u, v;
-};
+void InstanciateFire();
 
 struct VIEW_BUFFER
 {
@@ -151,74 +147,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	CompileShader(L"BasicFireShader.fx", true, "DiffusePS", &ps);
 	g_pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), NULL, &pPS);
 
-
-	auto width = 6, height = 6, size = width * height;
-
-	VERTEX* vertices = new VERTEX[size];
-
-	for (auto i = 0; i < size; i++)
-	{
-		float x = i / width;
-		float y = i % width;
-		float u = float(x) / float(width);
-		float v = 1.0f - (float(y) / float(height));
-
-		vertices[i] = { x, 0, y, u, v };
+	int nbFires = 50;
+	std::vector<ModelFire> fires(nbFires);
+	for (auto i = 0; i < nbFires; i++) {
+		fires[i].Initialize(g_pDevice, g_pImmediateContext, rand() % 50 - 50, 0, i, rand() % 30);
 	}
-
-	// INDEXES
-	int nbSquares = (width - 1) * (height - 1);
-	int sizeIndexes = nbSquares * (3 * 2);
-
-	unsigned int* indexes = new unsigned int[sizeIndexes];
-
-	int j = 0;
-	for (auto i = 0; i < nbSquares; i++)
-	{
-		auto left = i + (i / (width - 1));
-		indexes[j++] = left;
-		indexes[j++] = left + 1;
-		indexes[j++] = left + width;
-
-		indexes[j++] = left + 1;
-		indexes[j++] = left + width;
-		indexes[j++] = left + width + 1;
-	}
-	ID3D11Buffer *pIndexBuffer;
-
-	D3D11_BUFFER_DESC bd_index;
-
-	bd_index.Usage = D3D11_USAGE_DEFAULT;
-	bd_index.ByteWidth = sizeof(unsigned int) * sizeIndexes;
-	bd_index.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	bd_index.CPUAccessFlags = 0;
-	bd_index.MiscFlags = 0;
-
-	D3D11_SUBRESOURCE_DATA initData;
-	initData.pSysMem = indexes;
-	initData.SysMemPitch = 0;
-	initData.SysMemSlicePitch = 0;
-
-	g_pDevice->CreateBuffer(&bd_index, &initData, &pIndexBuffer);
-	g_pImmediateContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-
-	// vertex buffer
-	ID3D11Buffer *pVBuffer;    // global
-
-	D3D11_BUFFER_DESC bd;
-	ZeroMemory(&bd, sizeof(bd));
-
-	bd.Usage = D3D11_USAGE_DYNAMIC;
-	bd.ByteWidth = sizeof(VERTEX) * size;
-	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-	g_pDevice->CreateBuffer(&bd, NULL, &pVBuffer);
-
-	D3D11_MAPPED_SUBRESOURCE ms;
-	g_pImmediateContext->Map(pVBuffer, NULL, D3D11_MAP_WRITE_DISCARD, NULL, &ms);
-	memcpy(ms.pData, vertices, sizeof(VERTEX) * size);
-	g_pImmediateContext->Unmap(pVBuffer, NULL);
 
 	// input layout
 	ID3D11InputLayout *pLayout;
@@ -307,7 +240,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
 			g_pImmediateContext->RSSetViewports(1, &vp);
 
-			FLOAT rgba[] = { 0.0f, 0.0f, 0.0f, 0.0f };
+			FLOAT rgba[] = { 0.094f, 0.121f, 0.207f, 0.0f };
 			g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, rgba);
 			g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0, 0);
 
@@ -320,12 +253,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->VSSetShader(pVS, 0, 0);
 			g_pImmediateContext->PSSetShader(pPS, 0, 0);
 
-			UINT stride = sizeof(VERTEX);
-			UINT offset = 0;
-			g_pImmediateContext->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
-			g_pImmediateContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-			g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			g_pImmediateContext->DrawIndexed(sizeIndexes, 0, 0);
+			for (auto i = nbFires - 1; i >= 0; i--) {
+				fires[i].Draw(g_pImmediateContext);
+			}
 
 
 			// Turn off the alpha blending.

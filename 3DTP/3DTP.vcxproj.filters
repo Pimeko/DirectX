@@ -50,6 +50,9 @@
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ModelFire.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="3DTP.h">
@@ -108,6 +111,9 @@
     </ClInclude>
     <ClInclude Include="ImGui\stb_truetype.h">
       <Filter>ImGUI</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelFire.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
