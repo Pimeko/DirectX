@@ -87,6 +87,37 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	vp.TopLeftX = 0;
 	vp.TopLeftY = 0;
 
+	// Blend state
+	ID3D11BlendState* m_alphaEnableBlendingState;
+	ID3D11BlendState* m_alphaDisableBlendingState;
+	D3D11_BLEND_DESC blendStateDescription;
+	ZeroMemory(&blendStateDescription, sizeof(D3D11_BLEND_DESC));
+
+	// Create an alpha enabled blend state description.
+	blendStateDescription.RenderTarget[0].BlendEnable = TRUE;
+	blendStateDescription.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	blendStateDescription.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	blendStateDescription.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+	blendStateDescription.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+	blendStateDescription.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
+	blendStateDescription.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	blendStateDescription.RenderTarget[0].RenderTargetWriteMask = 0x0f;
+
+	// Create the blend state using the description.
+	HRESULT result = g_pDevice->CreateBlendState(&blendStateDescription, &m_alphaEnableBlendingState);
+	if (FAILED(result))
+		return result;
+
+	// Modify the description to create an alpha disabled blend state description.
+	blendStateDescription.RenderTarget[0].BlendEnable = FALSE;
+
+	// Create the blend state using the description.
+	result = g_pDevice->CreateBlendState(&blendStateDescription, &m_alphaDisableBlendingState);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
 	//Create and fill other DirectX Stuffs like Vertex/Index buffer, shaders 
 	ID3DBlob* vs;
 	ID3D11VertexShader *pVS;
@@ -407,6 +438,16 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, rgba);
 			g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0, 0);
 
+			// Enable blend factor
+			float blendFactor[4];
+			// Setup the blend factor.
+			blendFactor[0] = 0.0f;
+			blendFactor[1] = 0.0f;
+			blendFactor[2] = 0.0f;
+			blendFactor[3] = 0.0f;
+
+			// Turn on the alpha blending.
+			g_pImmediateContext->OMSetBlendState(m_alphaEnableBlendingState, blendFactor, 0xffffffff);
 
 			UINT stride = sizeof(VERTEX);
 			UINT offset = 0;
@@ -414,6 +455,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 			g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			g_pImmediateContext->DrawIndexed(sizeIndexes, 0, 0);
+
+
+			// Turn off the alpha blending.
+			g_pImmediateContext->OMSetBlendState(m_alphaDisableBlendingState, blendFactor, 0xffffffff);
 
 			ImGui::Render();
 			g_pSwapChain->Present(0, 0);
