@@ -344,7 +344,99 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	if (FAILED(hr))
 		MessageBox(NULL, L"a", L"Error", 0);
 
-	Model* m_Model = new Model;
+	// MODEL
+	struct ModelType
+	{
+		float x, y, z;
+		float tu, tv;
+	};
+
+	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
+	int m_vertexCount, m_indexCount;
+	Texture *m_Texture1, *m_Texture2, *m_Texture3;
+	ModelType* m_model;
+
+	m_vertexCount = 3;
+	m_indexCount = m_vertexCount;
+
+	m_model = new ModelType[m_vertexCount];
+	m_model[0] = { -1.0f, 1.0f, 0.0f, 0.0f, 1.0f };
+	m_model[1] = { 0.0f,  1.0f, 0.0f, 0.5f, 0.0f };
+	m_model[2] = { 1.0f, -1.0f, 0.0f, 1.0f, 1.0f };
+
+	// INITIALIZE MODEL
+	struct VertexType
+	{
+		Vector3 position;
+		Vector2 texture;
+	};
+	VertexType* vertices;
+	unsigned long* indices;
+	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
+	D3D11_SUBRESOURCE_DATA vertexData, indexData;
+	HRESULT result;
+	int i;
+
+
+	// Create the vertex array.
+	vertices = new VertexType[m_vertexCount];
+
+	// Create the index array.
+	indices = new unsigned long[m_indexCount];
+
+	// Load the vertex array and index array with data.
+	for (i = 0; i < m_vertexCount; i++)
+	{
+		vertices[i].position = Vector3(m_model[i].x, m_model[i].y, m_model[i].z);
+		vertices[i].texture = Vector2(m_model[i].tu, m_model[i].tv);
+		indices[i] = i;
+	}
+
+	// Set up the description of the static vertex buffer.
+	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.ByteWidth = sizeof(VertexType) * m_vertexCount;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.CPUAccessFlags = 0;
+	vertexBufferDesc.MiscFlags = 0;
+	vertexBufferDesc.StructureByteStride = 0;
+
+	// Give the subresource structure a pointer to the vertex data.
+	vertexData.pSysMem = vertices;
+	vertexData.SysMemPitch = 0;
+	vertexData.SysMemSlicePitch = 0;
+
+	// Now create the vertex buffer.
+	result = g_pDevice->CreateBuffer(&vertexBufferDesc, &vertexData, &m_vertexBuffer);
+	if (FAILED(result))
+		return result;
+
+	// Set up the description of the static index buffer.
+	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	indexBufferDesc.ByteWidth = sizeof(unsigned long) * m_indexCount;
+	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.CPUAccessFlags = 0;
+	indexBufferDesc.MiscFlags = 0;
+	indexBufferDesc.StructureByteStride = 0;
+
+	// Give the subresource structure a pointer to the index data.
+	indexData.pSysMem = indices;
+	indexData.SysMemPitch = 0;
+	indexData.SysMemSlicePitch = 0;
+
+	// Create the index buffer.
+	result = g_pDevice->CreateBuffer(&indexBufferDesc, &indexData, &m_indexBuffer);
+	if (FAILED(result))
+		return result;
+
+	// TEXTURE MODEL
+
+	ID3D11ShaderResourceView* m_texture;
+	ID3D11Resource* texture;
+	result = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/fire01.dds", &texture, &m_texture, 0, NULL);
+	if (FAILED(result))
+		return result;
+
+	/*Model* m_Model = new Model;
 	if (!m_Model)
 		MessageBox(NULL, L"b", L"Error", 0);
 
@@ -353,7 +445,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	m_Model->Initialize(g_pDevice, L"data/fire01.dds", L"data/noise01.dds", L"data/alpha01.dds");
 
 	FireShaderClass* m_FireShader = new FireShaderClass;
-	m_FireShader->Initialize(g_pDevice, hWnd);
+	m_FireShader->Initialize(g_pDevice, hWnd);*/
 
 	IAEngine::FreeCamera oFreeCamera;
 	iLastTime = timeGetTime();
@@ -389,7 +481,25 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			constant_buffer.world = (world * oViewMatrix * oProjMatrix).Transpose();
 			g_pImmediateContext->UpdateSubresource(g_pConstantBuffer11, 0, NULL, &constant_buffer, 0, 0);
 
-			// !
+			// MODEL RENDER
+
+			unsigned int stride;
+			unsigned int offset;
+
+			// Set vertex buffer stride and offset.
+			stride = sizeof(VertexType);
+			offset = 0;
+
+			// Set the vertex buffer to active in the input assembler so it can be rendered.
+			g_pImmediateContext->IASetVertexBuffers(0, 1, &m_vertexBuffer, &stride, &offset);
+
+			// Set the index buffer to active in the input assembler so it can be rendered.
+			g_pImmediateContext->IASetIndexBuffer(m_indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+			// Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
+			g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			/*
 			bool result;
 			Vector3 scrollSpeeds, scales;
 			Vector2 distortion1, distortion2, distortion3;
@@ -428,7 +538,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			if (!result)
 				MessageBox(NULL, L"c", L"Error", 0);
 
-			// !
+			*/
 
 
 			g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
@@ -439,7 +549,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0, 0);
 
 			//UINT stride = sizeof(VERTEX);
-			UINT offset = 0;
+			//UINT offset = 0;
 			/*g_pImmediateContext->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
 			g_pImmediateContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 			g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
