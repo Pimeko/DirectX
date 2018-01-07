@@ -123,13 +123,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	ID3D11VertexShader *pVS;
 	CompileShader(L"BasicFireShader.fx", false, "DiffuseVS", &vs);
 	g_pDevice->CreateVertexShader(vs->GetBufferPointer(), vs->GetBufferSize(), NULL, &pVS);
-	g_pImmediateContext->VSSetShader(pVS, 0, 0);
 
 	ID3DBlob* ps;
 	ID3D11PixelShader *pPS;
 	CompileShader(L"BasicFireShader.fx", true, "DiffusePS", &ps);
 	g_pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), NULL, &pPS);
-	g_pImmediateContext->PSSetShader(pPS, 0, 0);
 
 	struct VERTEX
 	{
@@ -166,7 +164,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	float* m_height;
 	unsigned short m_sizeX, m_sizeY;
 	float m_maxZ = 50;
-	auto width = 10, height = 10, size = width * height;
+	auto width = 6, height = 6, size = width * height;
 
 	VERTEX* vertices = new VERTEX[size];
 
@@ -244,7 +242,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	};
 
 	g_pDevice->CreateInputLayout(ied, 2, vs->GetBufferPointer(), vs->GetBufferSize(), &pLayout);
-	g_pImmediateContext->IASetInputLayout(pLayout);
 
 
 	// world buffer
@@ -337,7 +334,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		return hr;
 	}
 
-	g_pImmediateContext->PSSetSamplers(0, 1, &m_sampleState);
 
 
 	D3D11_SAMPLER_DESC samplerDesc2;
@@ -357,7 +353,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		return hr;
 	}
 
-	g_pImmediateContext->PSSetSamplers(1, 1, &m_sampleState2);
 
 
 	float frameTime = 0.0f;
@@ -434,7 +429,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
 			g_pImmediateContext->RSSetViewports(1, &vp);
 
-			FLOAT rgba[] = { 1.0f, 1.0f, 1.0f, 0.0f };
+			FLOAT rgba[] = { 0.0f, 0.0f, 0.0f, 0.0f };
 			g_pImmediateContext->ClearRenderTargetView(g_pRenderTargetView, rgba);
 			g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0, 0);
 
@@ -451,6 +446,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 			UINT stride = sizeof(VERTEX);
 			UINT offset = 0;
+
+			g_pImmediateContext->IASetInputLayout(pLayout);
+			g_pImmediateContext->VSSetShader(pVS, 0, 0);
+			g_pImmediateContext->PSSetShader(pPS, 0, 0);
+			g_pImmediateContext->PSSetSamplers(0, 1, &m_sampleState);
+			g_pImmediateContext->PSSetSamplers(1, 1, &m_sampleState2);
+
 			g_pImmediateContext->IASetVertexBuffers(0, 1, &pVBuffer, &stride, &offset);
 			g_pImmediateContext->IASetIndexBuffer(pIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
 			g_pImmediateContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
