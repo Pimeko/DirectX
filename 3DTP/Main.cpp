@@ -26,7 +26,7 @@ bool				CreateWindows(HINSTANCE, int, HWND& hWnd);
 bool				CreateDevice();
 bool				CreateDefaultRT();
 bool				CompileShader(LPCWSTR pFileName, bool bPixel, LPCSTR pEntrypoint, ID3DBlob** ppCompiledShader);//utiliser un L devant une chaine de caractère pour avoir un wchar* comme L"MonEffet.fx"
-bool LoadShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buffer** g_pNoiseBuffer, ID3D11Buffer** g_pDistortionBuffer,
+bool LoadFireShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buffer** g_pNoiseBuffer, ID3D11Buffer** g_pDistortionBuffer,
 	ID3D11ShaderResourceView** textureView, ID3D11ShaderResourceView** textureNoiseView, ID3D11ShaderResourceView** textureAlphaView);
 bool SetSamplerStates();
 void InstanciateFire();
@@ -147,11 +147,25 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	CompileShader(L"BasicFireShader.fx", true, "DiffusePS", &ps);
 	g_pDevice->CreatePixelShader(ps->GetBufferPointer(), ps->GetBufferSize(), NULL, &pPS);
 
+
+	ID3DBlob* vsGround;
+	ID3D11VertexShader *pVSGround;
+	CompileShader(L"TextureShader.fx", false, "DiffuseVS", &vsGround);
+	g_pDevice->CreateVertexShader(vsGround->GetBufferPointer(), vsGround->GetBufferSize(), NULL, &pVSGround);
+
+	ID3DBlob* psGround;
+	ID3D11PixelShader *pPSGround;
+	CompileShader(L"TextureShader.fx", true, "DiffusePS", &psGround);
+	g_pDevice->CreatePixelShader(psGround->GetBufferPointer(), psGround->GetBufferSize(), NULL, &pPSGround);
+
 	int nbFires = 50;
 	std::vector<ModelFire> fires(nbFires);
 	for (auto i = 0; i < nbFires; i++) {
-		fires[i].Initialize(g_pDevice, g_pImmediateContext, rand() % 50 - 50, 0, i, rand() % 30);
+		fires[i].Initialize(g_pDevice, g_pImmediateContext, rand() % 50 - 50, 0, i, rand() % 35 + 1);
 	}
+
+	ModelFire* grass = new ModelFire;
+	grass->Initialize(g_pDevice, g_pImmediateContext, 0, 1, 0, 50);
 
 	// input layout
 	ID3D11InputLayout *pLayout;
@@ -165,7 +179,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 	ID3D11Buffer *g_pViewBuffer11 = NULL, *g_pNoiseBuffer = NULL, *g_pDistortionBuffer = NULL;
 	ID3D11ShaderResourceView *textureView = NULL, *textureNoiseView = NULL, *textureAlphaView = NULL;
-	LoadShaderBuffersAndTextures(&g_pViewBuffer11, &g_pNoiseBuffer, &g_pDistortionBuffer, &textureView, &textureNoiseView, &textureAlphaView);
+	LoadFireShaderBuffersAndTextures(&g_pViewBuffer11, &g_pNoiseBuffer, &g_pDistortionBuffer, &textureView, &textureNoiseView, &textureAlphaView);
 	SetSamplerStates();
 
 	float frameTime = 0.0f;
@@ -257,6 +271,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 				fires[i].Draw(g_pImmediateContext);
 			}
 
+
+			g_pImmediateContext->VSSetShader(pVSGround, 0, 0);
+			g_pImmediateContext->PSSetShader(pPSGround, 0, 0);
+
+			grass->Draw(g_pImmediateContext);
 
 			// Turn off the alpha blending.
 			g_pImmediateContext->OMSetBlendState(m_alphaDisableBlendingState, blendFactor, 0xffffffff);
@@ -392,7 +411,7 @@ bool LoadRAW(const std::string& map, float** m_height, unsigned short *m_sizeX, 
 	return true;
 }
 
-bool LoadShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buffer** g_pNoiseBuffer, ID3D11Buffer** g_pDistortionBuffer,
+bool LoadFireShaderBuffersAndTextures(ID3D11Buffer** g_pViewBuffer11, ID3D11Buffer** g_pNoiseBuffer, ID3D11Buffer** g_pDistortionBuffer,
 	ID3D11ShaderResourceView** textureView, ID3D11ShaderResourceView** textureNoiseView, ID3D11ShaderResourceView** textureAlphaView)
 {
 	// world buffer

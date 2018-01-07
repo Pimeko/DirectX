@@ -37,7 +37,7 @@ cbuffer DistortionBuffer : register(b2)
 
 // Vertex Shader (first to be called)
 VertexOutput DiffuseVS(VertexInput input)
-{
+{	
 	VertexOutput output;
 
 	output.position = mul(float4(input.position, 1.0f), World);
@@ -63,6 +63,7 @@ Texture2D noiseTexture : register(t1);
 Texture2D alphaTexture : register(t2);
 SamplerState SampleType;
 SamplerState SampleType2;
+
 
 float4 DiffusePS(VertexOutput input) :SV_Target
 {
