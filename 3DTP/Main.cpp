@@ -3,7 +3,7 @@
 #include "InputManager.h"
 #include "D3Dcompiler.h"
 #include "Camera.h"
-#include "ModelFire.h"
+#include "Model.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"
@@ -158,13 +158,13 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	g_pDevice->CreatePixelShader(psGround->GetBufferPointer(), psGround->GetBufferSize(), NULL, &pPSGround);
 
 	int nbFires = 50;
-	std::vector<ModelFire> fires(nbFires);
+	std::vector<Model> fires(nbFires);
 	for (auto i = 0; i < nbFires; i++) {
-		fires[i].Initialize(g_pDevice, g_pImmediateContext, rand() % 50 - 50, 0, i, rand() % 35 + 1);
+		fires[i].Initialize(g_pDevice, g_pImmediateContext, rand() % 50 - 50, 0, i, rand() % 35 + 1, true);
 	}
 
-	ModelFire* grass = new ModelFire;
-	grass->Initialize(g_pDevice, g_pImmediateContext, 0, 1, 0, 50);
+	Model* ground = new Model;
+	ground->Initialize(g_pDevice, g_pImmediateContext, -80, -30, 0, 120, false);
 
 	// input layout
 	ID3D11InputLayout *pLayout;
@@ -263,6 +263,16 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 
 			g_pImmediateContext->IASetInputLayout(pLayout);
+
+			// GROUND
+			g_pImmediateContext->VSSetShader(pVSGround, 0, 0);
+			g_pImmediateContext->PSSetShader(pPSGround, 0, 0);
+			g_pImmediateContext->PSSetShaderResources(0, 1, &textureGroundView);
+
+			ground->Draw(g_pImmediateContext);
+
+			// FIRES
+
 			g_pImmediateContext->VSSetShader(pVS, 0, 0);
 			g_pImmediateContext->PSSetShader(pPS, 0, 0);
 
@@ -277,13 +287,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			for (auto i = nbFires - 1; i >= 0; i--) {
 				fires[i].Draw(g_pImmediateContext);
 			}
-
-
-			g_pImmediateContext->VSSetShader(pVSGround, 0, 0);
-			g_pImmediateContext->PSSetShader(pPSGround, 0, 0);
-			g_pImmediateContext->PSSetShaderResources(0, 1, &textureGroundView);
-
-			grass->Draw(g_pImmediateContext);
 
 			// Turn off the alpha blending.
 			g_pImmediateContext->OMSetBlendState(m_alphaDisableBlendingState, blendFactor, 0xffffffff);

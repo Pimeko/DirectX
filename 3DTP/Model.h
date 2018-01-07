@@ -1,5 +1,5 @@
 #pragma once
-class ModelFire
+class Model
 {
 struct VERTEX
 {
@@ -7,9 +7,9 @@ struct VERTEX
 	FLOAT u, v;
 };
 public:
-	ModelFire();
-	~ModelFire();
-	void ModelFire::Initialize(ID3D11Device*, ID3D11DeviceContext*, int, int, int, int);
+	Model();
+	~Model();
+	void Model::Initialize(ID3D11Device*, ID3D11DeviceContext*, int, int, int, int, bool);
 	void Draw(ID3D11DeviceContext*);
 private:
 	ID3D11Buffer *pVBuffer;

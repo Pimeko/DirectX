@@ -1,17 +1,17 @@
 #include "stdafx.h"
-#include "ModelFire.h"
+#include "Model.h"
 
 
-ModelFire::ModelFire()
+Model::Model()
 {
 }
 
 
-ModelFire::~ModelFire()
+Model::~Model()
 {
 }
 
-void ModelFire::Initialize(ID3D11Device* g_pDevice, ID3D11DeviceContext* g_pImmediateContext, int offsetX, int offsetY, int offsetZ, int width)
+void Model::Initialize(ID3D11Device* g_pDevice, ID3D11DeviceContext* g_pImmediateContext, int offsetX, int offsetY, int offsetZ, int width, bool vertical)
 {
 	auto height = width, size = width * height;
 
@@ -24,7 +24,10 @@ void ModelFire::Initialize(ID3D11Device* g_pDevice, ID3D11DeviceContext* g_pImme
 		float u = float(x) / float(width);
 		float v = 1.0f - (float(y) / float(height));
 
-		vertices[i] = { x + offsetX, (float)offsetZ, y + offsetY, u, v };
+		if (vertical)
+			vertices[i] = { x + offsetX, (float)offsetZ, y + offsetY, u, v };
+		else
+			vertices[i] = { x + offsetX, y + offsetY, (float)offsetZ, u, v };
 	}
 
 	// INDEXES
@@ -79,7 +82,7 @@ void ModelFire::Initialize(ID3D11Device* g_pDevice, ID3D11DeviceContext* g_pImme
 	g_pImmediateContext->Unmap(pVBuffer, NULL);
 }
 
-void ModelFire::Draw(ID3D11DeviceContext* g_pImmediateContext)
+void Model::Draw(ID3D11DeviceContext* g_pImmediateContext)
 {
 	UINT stride = sizeof(VERTEX);
 	UINT offset = 0;
