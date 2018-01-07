@@ -106,18 +106,30 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		FLOAT u, v;
 	};
 
-	struct CONSTANT_BUFFER
+	struct VIEW_BUFFER
 	{
 		DirectX::SimpleMath::Matrix World;
 	};
 
-
 	struct NOISE_BUFFER
 	{
 		float frameTime;
-		Vector3 scrollSpeeds;
-		Vector3 scales;
+		float scrollSpeedX;
+		float scrollSpeedY;
+		float scrollSpeedZ;
+		float scaleX;
+		float scaleY;
+		float scaleZ;
 		float padding;
+	};
+
+	struct DISTORTION_BUFFER
+	{
+		float distortion1X, distortion1Y;
+		float distortion2X, distortion2Y;
+		float distortion3X, distortion3Y;
+		float distortionScale;
+		float distortionBias;
 	};
 
 	float* m_height;
@@ -205,25 +217,25 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 
 	// world buffer
-	ID3D11Buffer* g_pConstantBuffer11 = NULL;
+	ID3D11Buffer* g_pViewBuffer11 = NULL;
 	D3D11_BUFFER_DESC cbDesc;
-	cbDesc.ByteWidth = sizeof(CONSTANT_BUFFER);
+	cbDesc.ByteWidth = sizeof(VIEW_BUFFER);
 	cbDesc.Usage = D3D11_USAGE_DEFAULT;
 	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	cbDesc.CPUAccessFlags = 0;
 	cbDesc.MiscFlags = 0;
 	cbDesc.StructureByteStride = 0;
 
-	HRESULT hr = g_pDevice->CreateBuffer(&cbDesc, NULL, &g_pConstantBuffer11);
+	HRESULT hr = g_pDevice->CreateBuffer(&cbDesc, NULL, &g_pViewBuffer11);
 
 	if (FAILED(hr))
 		return hr;
-	g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pConstantBuffer11);
+	g_pImmediateContext->VSSetConstantBuffers(0, 1, &g_pViewBuffer11);
 
 	// noise buffer
 	ID3D11Buffer* g_pNoiseBuffer = NULL;
 	D3D11_BUFFER_DESC noiseBuffer;
-	noiseBuffer.ByteWidth = sizeof(CONSTANT_BUFFER);
+	noiseBuffer.ByteWidth = sizeof(VIEW_BUFFER);
 	noiseBuffer.Usage = D3D11_USAGE_DEFAULT;
 	noiseBuffer.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	noiseBuffer.CPUAccessFlags = 0;
@@ -236,6 +248,22 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 		return hr;
 	g_pImmediateContext->VSSetConstantBuffers(1, 1, &g_pNoiseBuffer);
 
+	// distortion buffer
+	ID3D11Buffer* g_pDistortionBuffer = NULL;
+	D3D11_BUFFER_DESC distortionBuffer;
+	distortionBuffer.ByteWidth = sizeof(DISTORTION_BUFFER);
+	distortionBuffer.Usage = D3D11_USAGE_DEFAULT;
+	distortionBuffer.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	distortionBuffer.CPUAccessFlags = 0;
+	distortionBuffer.MiscFlags = 0;
+	distortionBuffer.StructureByteStride = 0;
+
+	hr = g_pDevice->CreateBuffer(&distortionBuffer, NULL, &g_pDistortionBuffer);
+
+	if (FAILED(hr))
+		return hr;
+	g_pImmediateContext->VSSetConstantBuffers(2, 1, &g_pDistortionBuffer);
+
 	ID3D11Resource* texture;
 	ID3D11ShaderResourceView* textureView;
 	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/fire01.dds", &texture, &textureView, 0, NULL);
@@ -244,6 +272,23 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	}
 	g_pImmediateContext->PSSetShaderResources(0, 1, &textureView);
 
+	ID3D11Resource* textureNoise;
+	ID3D11ShaderResourceView* textureNoiseView;
+	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/noise01.dds", &textureNoise, &textureNoiseView, 0, NULL);
+	if (FAILED(hr)) {
+		return hr;
+	}
+	g_pImmediateContext->PSSetShaderResources(1, 1, &textureNoiseView);
+
+	ID3D11Resource* textureAlpha;
+	ID3D11ShaderResourceView* textureAlphaView;
+	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/alpha01.dds", &textureAlpha, &textureAlphaView, 0, NULL);
+	if (FAILED(hr)) {
+		return hr;
+	}
+	g_pImmediateContext->PSSetShaderResources(2, 1, &textureAlphaView);
+
+
 	D3D11_SAMPLER_DESC samplerDesc;
 	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -251,42 +296,37 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.MipLODBias = 0.0f;
 	samplerDesc.MaxAnisotropy = 1;
-	samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
 	samplerDesc.MinLOD = 0;
 	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-	ID3D11SamplerState* myLinearWrapSampler;
+	ID3D11SamplerState* m_sampleState;
 
-	hr = g_pDevice->CreateSamplerState(&samplerDesc, &myLinearWrapSampler);
+	hr = g_pDevice->CreateSamplerState(&samplerDesc, &m_sampleState);
 	if (FAILED(hr)) {
 		return hr;
 	}
 
-	g_pImmediateContext->PSSetSamplers(0, 1, &myLinearWrapSampler);
+	g_pImmediateContext->PSSetSamplers(0, 1, &m_sampleState);
 
-	/*ID3D11Resource* texture2;
-	ID3D11ShaderResourceView* textureView2;
-	hr = DirectX::CreateDDSTextureFromFile(g_pDevice, L"data/noise01.dds", &texture2, &textureView2, 0, NULL);
+
+	D3D11_SAMPLER_DESC samplerDesc2;
+	samplerDesc2.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	samplerDesc2.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc2.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc2.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc2.MipLODBias = 0.0f;
+	samplerDesc2.MaxAnisotropy = 1;
+	samplerDesc2.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	samplerDesc2.MinLOD = 0;
+	samplerDesc2.MaxLOD = D3D11_FLOAT32_MAX;
+	ID3D11SamplerState* m_sampleState2;
+
+	hr = g_pDevice->CreateSamplerState(&samplerDesc2, &m_sampleState2);
 	if (FAILED(hr)) {
 		return hr;
 	}
-	g_pImmediateContext->PSSetShaderResources(1, 1, &textureView);
 
-	D3D11_SAMPLER_DESC noiseDesc;
-	noiseDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-	noiseDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	noiseDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	noiseDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	noiseDesc.MipLODBias = 0.0f;
-	noiseDesc.MaxAnisotropy = 1;
-	noiseDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	noiseDesc.MinLOD = -FLT_MAX;
-	noiseDesc.MaxLOD = FLT_MAX;
-	ID3D11SamplerState* samplerStateNoise;
-
-	hr = g_pDevice->CreateSamplerState(&noiseDesc, &samplerStateNoise);
-	if (FAILED(hr)) {
-		return hr;
-	}*/
+	g_pImmediateContext->PSSetSamplers(1, 1, &m_sampleState2);
 
 
 	float frameTime = 0.0f;
@@ -329,18 +369,36 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 			// View with world buffer
 			Matrix world = Matrix();
-			CONSTANT_BUFFER constant_buffer;
+			VIEW_BUFFER constant_buffer;
 			constant_buffer.World = (world * oViewMatrix * oProjMatrix).Transpose();
-			g_pImmediateContext->UpdateSubresource(g_pConstantBuffer11, 0, NULL, &constant_buffer, 0, 0);
+			g_pImmediateContext->UpdateSubresource(g_pViewBuffer11, 0, NULL, &constant_buffer, 0, 0);
 
 			// Noise buffer
 			NOISE_BUFFER noise_buffer;
 			noise_buffer.frameTime = frameTime;
-			noise_buffer.scrollSpeeds = Vector3(1.3f, 2.1f, 2.3f);
-			noise_buffer.scales = Vector3(1.0f, 2.0f, 3.0f);
-
+			noise_buffer.scrollSpeedX = 1.3f;
+			noise_buffer.scrollSpeedY = 2.1f;
+			noise_buffer.scrollSpeedZ = 2.3f;
+			noise_buffer.scaleX = 1.0f;
+			noise_buffer.scaleY = 2.0f;
+			noise_buffer.scaleZ = 3.0f;
+			noise_buffer.padding = 0.0f;
 			g_pImmediateContext->UpdateSubresource(g_pNoiseBuffer, 0, NULL, &noise_buffer, 0, 0);
 
+			// Distortion buffer
+			DISTORTION_BUFFER distortion_buffer;
+			distortion_buffer.distortion1X = 0.1f;
+			distortion_buffer.distortion1Y = 0.2f;
+
+			distortion_buffer.distortion2X = 0.1f;
+			distortion_buffer.distortion2Y = 0.3f;
+
+			distortion_buffer.distortion3X = 0.1f;
+			distortion_buffer.distortion3Y = 0.1f;
+
+			distortion_buffer.distortionScale = 0.8f;
+			distortion_buffer.distortionBias = 0.5f;
+			g_pImmediateContext->UpdateSubresource(g_pDistortionBuffer, 0, NULL, &distortion_buffer, 0, 0);
 
 			g_pImmediateContext->OMSetRenderTargets(1, &g_pRenderTargetView, g_pDepthStencilView);
 			g_pImmediateContext->RSSetViewports(1, &vp);
