@@ -20,7 +20,7 @@ bool CreateWindows(HINSTANCE hInstance, int nCmdShow, HWND& hWnd)
 	if (RegisterClassEx(&wcex) == 0)
 		return false;
 
-	hWnd = CreateWindow(L"3DTPClassName", L"This is awesome", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, NULL, hInstance, NULL);
+	hWnd = CreateWindow(L"3DTPClassName", L"Le feu !", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_WIDTH, WINDOW_HEIGHT, NULL, NULL, hInstance, NULL);
 
 	if (!hWnd)
 		return false;

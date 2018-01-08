@@ -205,7 +205,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
 			ImGui_ImplDX11_NewFrame();
 			ImGui::Begin("Menu Debug");
-			ImGui::Text("Hello World Imgui");
+			ImGui::Text("Le feu");
 			ImGui::End();
 
 			oFreeCamera.Update(g_pInputManager, fElaspedTime);
@@ -220,20 +220,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			// View with world buffer
 			Matrix world = Matrix();
 			VIEW_BUFFER constant_buffer;
+
 			constant_buffer.World = (world * oViewMatrix * oProjMatrix).Transpose();
 			g_pImmediateContext->UpdateSubresource(g_pViewBuffer11, 0, NULL, &constant_buffer, 0, 0);
 
-			// Noise buffer
-			NOISE_BUFFER noise_buffer;
-			noise_buffer.frameTime = frameTime;
-			noise_buffer.scrollSpeedX = 0.13f;
-			noise_buffer.scrollSpeedY = 0.21f;
-			noise_buffer.scrollSpeedZ = 0.23f;
-			noise_buffer.scaleX = 1.0f;
-			noise_buffer.scaleY = 2.0f;
-			noise_buffer.scaleZ = 3.0f;
-			noise_buffer.padding = 0.0f;
-			g_pImmediateContext->UpdateSubresource(g_pNoiseBuffer, 0, NULL, &noise_buffer, 0, 0);
 
 			// Distortion buffer
 			DISTORTION_BUFFER distortion_buffer;
@@ -285,6 +275,20 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 			g_pImmediateContext->PSSetShaderResources(2, 1, &textureAlphaView);
 
 			for (auto i = nbFires - 1; i >= 0; i--) {
+
+				// Noise buffer
+				NOISE_BUFFER noise_buffer;
+				noise_buffer.frameTime = frameTime;
+				float delta = (float)(i) / 100.0f;
+				noise_buffer.scrollSpeedX = 0.13f + delta;
+				noise_buffer.scrollSpeedY = 0.21f + delta;
+				noise_buffer.scrollSpeedZ = 0.23f + delta;
+				noise_buffer.scaleX = 1.0f;
+				noise_buffer.scaleY = 2.0f;
+				noise_buffer.scaleZ = 3.0f;
+				noise_buffer.padding = 0.0f;
+				g_pImmediateContext->UpdateSubresource(g_pNoiseBuffer, 0, NULL, &noise_buffer, 0, 0);
+
 				fires[i].Draw(g_pImmediateContext);
 			}
 
